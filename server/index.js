@@ -3,9 +3,14 @@ const app = express();
 const port = 5000;
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
+
+const server = require("http").createServer(app);
+const io = require("socket.io")(server);
+
 const config = require("./config/key");
 const { auth } = require("./middleware/auth");
 const { User } = require("./models/User");
+const { Chat } = require("./models/Chat");
 
 // application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -15,7 +20,8 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 
 const mongoose = require("mongoose");
-mongoose
+const { json } = require("body-parser");
+const connect = mongoose
   .connect(config.mongoURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -104,6 +110,33 @@ app.get("/api/users/logout", auth, (req, res) => {
   });
 });
 
-app.listen(port, () => {
+io.on("connection", (socket) => {
+  socket.on("Input Chat Message", (msg) => {
+    connect.then((db) => {
+      try {
+        let chat = new Chat({
+          message: msg.chatMessage,
+          sender: msg.userId,
+          type: msg.type,
+        });
+
+        chat.save((err, doc) => {
+          if (err) {
+            return res.json({ success: false, err });
+          }
+          Chat.find({ _id: doc._id })
+            .populate("sender")
+            .exec((err, doc) => {
+              return io.emit("Output Chat Message", doc);
+            });
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  });
+});
+
+server.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
 });
