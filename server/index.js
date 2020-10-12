@@ -110,6 +110,8 @@ app.get("/api/users/logout", auth, (req, res) => {
   });
 });
 
+app.use("/api/chat", require("./routes/chat"));
+
 io.on("connection", (socket) => {
   socket.on("Input Chat Message", (msg) => {
     connect.then((db) => {

@@ -6,6 +6,9 @@ import moment from "moment";
 
 import io from "socket.io-client";
 
+import { getChats, afterPostMessage } from "../../../_actions/chat_actions";
+import ChatCard from "./Sections/ChatCard";
+
 class ChatPage extends Component {
   state = {
     chatMessage: "",
@@ -14,10 +17,12 @@ class ChatPage extends Component {
   componentDidMount() {
     let server = "http://localhost:5000";
 
+    this.props.dispatch(getChats());
+
     this.socket = io(server);
 
     this.socket.on("Output Chat Message", (messageFromBackEnd) => {
-      console.log(messageFromBackEnd);
+      this.props.dispatch(afterPostMessage(messageFromBackEnd));
     });
   }
 
@@ -27,6 +32,10 @@ class ChatPage extends Component {
     });
   };
 
+  renderCards = () =>
+    this.props.chats.chats &&
+    this.props.chats.chats.map((chat) => <ChatCard key={chat._id} {...chat} />);
+
   submitChatMessage = (e) => {
     e.preventDefault();
 
@@ -35,7 +44,7 @@ class ChatPage extends Component {
     let userName = this.props.user.userData.name;
     let userImage = this.props.user.userData.image;
     let nowTime = moment();
-    let type = "Image";
+    let type = "Text";
 
     this.socket.emit("Input Chat Message", {
       chatMessage,
@@ -58,7 +67,11 @@ class ChatPage extends Component {
           </p>
         </div>
         <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-          <div className="infinite-container">
+          <div
+            className="infinite-container"
+            style={{ height: "500px", overflowY: "scroll" }}
+          >
+            {this.props.chats && this.renderCards()}
             <div
               ref={(el) => {
                 this.messagesEnd = el;
@@ -66,6 +79,7 @@ class ChatPage extends Component {
               style={{ float: "left", clear: "both" }}
             />
           </div>
+
           <Row>
             <Form layout="inline" onSubmit={this.submitChatMessage}>
               <Col span={18}>
@@ -102,6 +116,7 @@ class ChatPage extends Component {
 const mapStateToProps = (state) => {
   return {
     user: state.user,
+    chats: state.chat,
   };
 };
 
