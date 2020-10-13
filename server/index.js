@@ -3,14 +3,27 @@ const app = express();
 const port = 5000;
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
-
 const server = require("http").createServer(app);
 const io = require("socket.io")(server);
-
 const config = require("./config/key");
 const { auth } = require("./middleware/auth");
 const { User } = require("./models/User");
 const { Chat } = require("./models/Chat");
+
+const multer = require("multer");
+const fs = require("fs");
+
+var storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, `${Date.now()}_${file.originalname}`);
+  },
+});
+
+var upload = multer({ storage: storage }).single("file");
+app.use("/uploads", express.static("uploads"));
 
 // application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -107,6 +120,15 @@ app.get("/api/users/logout", auth, (req, res) => {
     return res.status(200).send({
       success: true,
     });
+  });
+});
+
+app.post("/api/chat/uploadfiles", auth, (req, res) => {
+  upload(req, res, (err) => {
+    if (err) {
+      return res.json({ success: false, err });
+    }
+    return res.json({ success: true, url: res.req.file.path });
   });
 });
 

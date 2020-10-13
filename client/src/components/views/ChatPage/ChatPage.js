@@ -1,13 +1,17 @@
 import React, { Component } from "react";
 import { Form, Button, Row, Col, Input } from "antd";
-import { MessageOutlined, EnterOutlined } from "@ant-design/icons";
+import {
+  MessageOutlined,
+  EnterOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import { connect } from "react-redux";
 import moment from "moment";
-
 import io from "socket.io-client";
-
 import { getChats, afterPostMessage } from "../../../_actions/chat_actions";
 import ChatCard from "./Sections/ChatCard";
+import Dropzone from "react-dropzone";
+import axios from "axios";
 
 class ChatPage extends Component {
   state = {
@@ -26,9 +30,44 @@ class ChatPage extends Component {
     });
   }
 
+  componentDidUpdate() {
+    this.messagesEnd.scrollIntoView({ behavior: "smooth" });
+  }
+
   handleSearchChange = (e) => {
     this.setState({
       chatMessage: e.target.value,
+    });
+  };
+
+  onDrop = (files) => {
+    console.log(files);
+    let formData = new FormData();
+
+    const config = {
+      header: { "content-type": "multipart/form-data" },
+    };
+
+    formData.append("file", files[0]);
+
+    axios.post("api/chat/uploadfiles", formData, config).then((response) => {
+      if (response.data.success) {
+        let chatMessage = response.data.url;
+        let userId = this.props.user.userData._id;
+        let userName = this.props.user.userData.name;
+        let userImage = this.props.user.userData.image;
+        let nowTime = moment();
+        let type = "VideoOrImage";
+
+        this.socket.emit("Input Chat Message", {
+          chatMessage,
+          userId,
+          userName,
+          userImage,
+          nowTime,
+          type,
+        });
+      }
     });
   };
 
@@ -94,7 +133,20 @@ class ChatPage extends Component {
                   onChange={this.handleSearchChange}
                 />
               </Col>
-              <Col span={2}></Col>
+              <Col span={2}>
+                <Dropzone onDrop={this.onDrop}>
+                  {({ getRootProps, getInputProps }) => (
+                    <section>
+                      <div {...getRootProps()}>
+                        <input {...getInputProps()} />
+                        <Button>
+                          <UploadOutlined type="upload" />
+                        </Button>
+                      </div>
+                    </section>
+                  )}
+                </Dropzone>
+              </Col>
               <Col span={4}>
                 <Button
                   type="primary"
